@@ -1,0 +1,17 @@
+# Dependencias (no se usan, pero por si acaso)
+node_modules/
+
+# Empaquetado de la extensión
+*.zip
+*.crx
+*.pem
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+*.swp

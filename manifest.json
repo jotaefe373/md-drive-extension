@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Markdown Viewer for Google Drive",
+  "version": "2.0.0",
+  "description": "Renderiza y edita archivos .md de Google Drive con formato limpio: temas, tipografía y ancho ajustables.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://drive.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://drive.google.com/*"],
+      "js": [
+        "src/parser.js",
+        "src/settings.js",
+        "src/ui.js",
+        "src/main.js"
+      ],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
