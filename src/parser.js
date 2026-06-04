@@ -42,6 +42,33 @@
       .replace(/~~([^~]+)~~/g, "<del>$1</del>");
   }
 
+  /* ----- soporte de tablas (GFM) ----- */
+  // Divide una fila "| a | b |" en celdas, sin los pipes de los extremos.
+  function splitRow(line) {
+    let s = line.trim();
+    if (s.startsWith("|")) s = s.slice(1);
+    if (s.endsWith("|")) s = s.slice(0, -1);
+    return s.split("|").map((c) => c.trim());
+  }
+  // Fila separadora: |---|:--:| ... (requiere pipe, así no choca con <hr>).
+  function isSeparatorRow(line) {
+    if (!line.includes("|")) return false;
+    const cells = splitRow(line);
+    return cells.length > 0 && cells.every((c) => /^:?-{1,}:?$/.test(c));
+  }
+  function alignOf(cell) {
+    const l = cell.startsWith(":"), r = cell.endsWith(":");
+    if (l && r) return "center";
+    if (r) return "right";
+    if (l) return "left";
+    return "";
+  }
+  // ¿La línea actual + la siguiente forman una cabecera de tabla?
+  function isTableStart(line, next) {
+    return !!line && line.includes("|") && next != null && isSeparatorRow(next);
+  }
+  function alignAttr(a) { return a ? ` style="text-align:${a}"` : ""; }
+
   function parse(src) {
     const lines = escapeHtml(String(src).replace(/\r\n?/g, "\n")).split("\n");
     const html = [];
@@ -109,6 +136,26 @@
         i++; continue;
       }
 
+      // Tabla (GFM): cabecera + fila separadora + cuerpo
+      if (isTableStart(line, lines[i + 1])) {
+        closeList();
+        const headers = splitRow(line);
+        const aligns = splitRow(lines[i + 1]).map(alignOf);
+        i += 2;
+        const rows = [];
+        while (i < lines.length && lines[i].includes("|") && lines[i].trim() !== "") {
+          rows.push(splitRow(lines[i++]));
+        }
+        const th = headers
+          .map((c, k) => `<th${alignAttr(aligns[k])}>${inline(c)}</th>`).join("");
+        const body = rows
+          .map((cells) => `<tr>${headers
+            .map((_, k) => `<td${alignAttr(aligns[k])}>${inline(cells[k] || "")}</td>`)
+            .join("")}</tr>`).join("");
+        html.push(`<table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>`);
+        continue;
+      }
+
       // Párrafo (junta líneas consecutivas)
       closeList();
       const para = [];
@@ -120,7 +167,8 @@
         !/^\s*>\s?/.test(lines[i]) &&
         !/^\s*[-*+]\s+/.test(lines[i]) &&
         !/^\s*\d+\.\s+/.test(lines[i]) &&
-        !/^\s*([-*_])(\s*\1){2,}\s*$/.test(lines[i])
+        !/^\s*([-*_])(\s*\1){2,}\s*$/.test(lines[i]) &&
+        !isTableStart(lines[i], lines[i + 1])
       ) {
         para.push(lines[i++].trim());
       }
