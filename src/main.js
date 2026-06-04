@@ -192,30 +192,41 @@
    * elementos que parecen entradas de la lista de archivos (tienen ancestro
    * de celda/fila/data-id), no la cabecera de la vista previa.
    */
+  function nameOf(el) {
+    return (el.getAttribute("aria-label") || el.getAttribute("data-tooltip") || "").trim();
+  }
+
+  // Todos los elementos del DOM que referencian un .md (fuera de nuestro UI).
+  function markdownEls() {
+    const els = document.querySelectorAll('[aria-label$=".md"], [data-tooltip$=".md"]');
+    return Array.prototype.filter.call(els, (el) => !el.closest("#" + OVERLAY_ID));
+  }
+
   function collectMarkdownFiles() {
     const seen = new Set();
     const out = [];
-    const els = document.querySelectorAll('[aria-label$=".md"], [data-tooltip$=".md"]');
-    for (const el of els) {
-      if (el.closest("#" + OVERLAY_ID)) continue; // ignorar nuestra propia UI
-      const name = (el.getAttribute("aria-label") || el.getAttribute("data-tooltip") || "").trim();
+    for (const el of markdownEls()) {
+      const name = nameOf(el);
       if (!name || seen.has(name)) continue;
-      const target = el.closest('[data-id], [role="gridcell"], [role="row"], [role="listitem"]');
-      if (!target) continue; // no parece una entrada de la lista de archivos
       seen.add(name);
-      out.push({ name, _el: target });
+      out.push({ name });
     }
     return out;
   }
 
   function openMarkdownFile(item) {
-    const el = item && item._el;
+    if (!item || !item.name) return;
+    // Re-buscar el elemento en vivo por nombre (evita referencias obsoletas).
+    const el = markdownEls().find((e) => nameOf(e) === item.name);
     if (!el) return;
+    const target = el.closest(
+      '[data-id], [role="gridcell"], [role="row"], [role="listitem"], [role="option"]'
+    ) || el;
     const opts = { bubbles: true, cancelable: true, view: window };
-    el.dispatchEvent(new MouseEvent("mousedown", opts));
-    el.dispatchEvent(new MouseEvent("mouseup", opts));
-    el.dispatchEvent(new MouseEvent("click", opts));
-    el.dispatchEvent(new MouseEvent("dblclick", opts)); // Drive abre con doble clic
+    target.dispatchEvent(new MouseEvent("mousedown", opts));
+    target.dispatchEvent(new MouseEvent("mouseup", opts));
+    target.dispatchEvent(new MouseEvent("click", opts));
+    target.dispatchEvent(new MouseEvent("dblclick", opts)); // Drive abre con doble clic
     // El cambio de vista lo recoge el observador -> tryRender -> update.
   }
 
