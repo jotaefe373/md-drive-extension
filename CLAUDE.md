@@ -33,7 +33,7 @@ styles.css           Apariencia. ÚNICA fuente de verdad visual (variables CSS).
 src/
   parser.js    →  MDV.parse(md) -> html           parser Markdown sin deps
   settings.js  →  MDV.settings                     preferencias + chrome.storage
-  ui.js        →  MDV.ui.createViewer(...)          overlay, toolbar, editor, sidebar
+  ui.js        →  MDV.ui.createViewer(...)          overlay, toolbar, editor
   main.js      →  orquestación                      observer, detección, navegación
 ```
 
@@ -55,15 +55,14 @@ en `manifest.json`** importa: `parser → settings → ui → main`.
 5. Navegación ← →: `navigate()` reutiliza la nav nativa de Drive (clic en
    botón o tecla simulada) y el observer refresca el overlay con
    `viewer.update()` **en sitio**, sin recrearlo.
-6. Sidebar (botón ☰): `collectMarkdownFiles()` descubre los `.md` del DOM de
-   la carpeta y `openMarkdownFile()` los abre simulando doble clic.
-   **FRÁGIL**: depende del DOM de Drive; si está vacío, el `.md` se abrió sin
-   carpeta. Si el clic no abre, Drive puede estar rechazando el evento
-   sintético (`isTrusted:false`) — afinar con el `aria-label`/estructura real.
 
 Nota sobre eventos sintéticos: el listener global de `keydown` ignora
 `!e.isTrusted` para no reinterceptar las flechas que `dispatchArrow()` emite
 hacia Drive (provocaba recursión infinita).
+
+Descartado: un sidebar (botón ☰) para listar los `.md` de la carpeta. Se
+eliminó porque en la vista previa Drive no expone la rejilla de archivos en el
+DOM, así que la lista salía vacía y el enfoque solo-DOM no era viable.
 
 ## Convenciones
 
