@@ -120,7 +120,11 @@
     try {
       await MDV.settings.load();
       currentSig = sig;
-      viewer = MDV.ui.createViewer({ raw, fileName, onClose: close });
+      viewer = MDV.ui.createViewer({
+        raw, fileName, onClose: close,
+        listFiles: collectMarkdownFiles,
+        openFile: openMarkdownFile,
+      });
       document.documentElement.classList.add("mdv-active");
       document.body.appendChild(viewer.overlay);
     } catch (err) {
@@ -170,6 +174,39 @@
   function navigate(dir) {
     if (!clickNativeNav(dir)) dispatchArrow(dir);
     // El cambio de contenido lo recoge el observador -> tryRender -> update.
+  }
+
+  /* ---------------------- lista de .md de la carpeta ----------------------
+   * Descubre los archivos .md presentes en el DOM (rejilla/lista de Drive) y
+   * permite abrirlos simulando el doble clic sobre su elemento. Solo cuenta
+   * elementos que parecen entradas de la lista de archivos (tienen ancestro
+   * de celda/fila/data-id), no la cabecera de la vista previa.
+   */
+  function collectMarkdownFiles() {
+    const seen = new Set();
+    const out = [];
+    const els = document.querySelectorAll('[aria-label$=".md"], [data-tooltip$=".md"]');
+    for (const el of els) {
+      if (el.closest("#" + OVERLAY_ID)) continue; // ignorar nuestra propia UI
+      const name = (el.getAttribute("aria-label") || el.getAttribute("data-tooltip") || "").trim();
+      if (!name || seen.has(name)) continue;
+      const target = el.closest('[data-id], [role="gridcell"], [role="row"], [role="listitem"]');
+      if (!target) continue; // no parece una entrada de la lista de archivos
+      seen.add(name);
+      out.push({ name, _el: target });
+    }
+    return out;
+  }
+
+  function openMarkdownFile(item) {
+    const el = item && item._el;
+    if (!el) return;
+    const opts = { bubbles: true, cancelable: true, view: window };
+    el.dispatchEvent(new MouseEvent("mousedown", opts));
+    el.dispatchEvent(new MouseEvent("mouseup", opts));
+    el.dispatchEvent(new MouseEvent("click", opts));
+    el.dispatchEvent(new MouseEvent("dblclick", opts)); // Drive abre con doble clic
+    // El cambio de vista lo recoge el observador -> tryRender -> update.
   }
 
   /* ---------------------- eventos globales ---------------------- */

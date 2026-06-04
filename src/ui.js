@@ -111,8 +111,54 @@
     ]);
   }
 
+  /* ---------------------- barra lateral de archivos ----------------------
+   * Lista los .md disponibles (provistos por listFiles()) y al hacer clic
+   * delega la apertura en openFile(). El visor refresca esta lista cada vez
+   * que se abre el panel.
+   */
+  function buildSidebar({ listFiles, openFile, getCurrentName }) {
+    const listEl = h("div", { class: "mdv-side-list" });
+    const sidebar = h("aside", { class: "mdv-sidebar", "aria-label": "Archivos Markdown" }, [
+      h("div", { class: "mdv-side-head", text: "Archivos .md en la carpeta" }),
+      listEl,
+    ]);
+    const backdrop = h("div", { class: "mdv-backdrop" });
+
+    function refresh() {
+      const files = (listFiles && listFiles()) || [];
+      const current = (getCurrentName && getCurrentName()) || "";
+      listEl.innerHTML = "";
+      if (!files.length) {
+        listEl.appendChild(h("div", {
+          class: "mdv-side-empty",
+          text: "No se encontraron .md en esta vista. Abre el archivo desde una carpeta.",
+        }));
+        return;
+      }
+      files.forEach((f) => {
+        listEl.appendChild(h("button", {
+          type: "button",
+          class: "mdv-side-item" + (f.name === current ? " is-current" : ""),
+          title: f.name,
+          text: f.name,
+          onClick: () => { setOpen(false); openFile && openFile(f); },
+        }));
+      });
+    }
+
+    function setOpen(v) {
+      sidebar.classList.toggle("is-open", v);
+      backdrop.classList.toggle("is-open", v);
+      if (v) refresh();
+    }
+    function isOpen() { return sidebar.classList.contains("is-open"); }
+
+    backdrop.addEventListener("click", () => setOpen(false));
+    return { sidebar, backdrop, setOpen, isOpen, refresh };
+  }
+
   /* ---------------------- visor completo ---------------------- */
-  function createViewer({ raw, fileName, onClose }) {
+  function createViewer({ raw, fileName, onClose, listFiles, openFile }) {
     const s = MDV.settings;
     let source = raw;
     let currentFile = fileName;
@@ -173,9 +219,22 @@
       "view", (m) => overlay.setAttribute("data-mode", m)
     );
 
+    /* --- barra lateral de archivos --- */
+    const side = buildSidebar({
+      listFiles,
+      openFile,
+      getCurrentName: () => currentFile,
+    });
+    const hamburgerBtn = h("button", {
+      type: "button", class: "mdv-icon-btn", title: "Archivos .md", "aria-label": "Archivos .md",
+      html: "&#9776;", // ☰
+      onClick: (e) => { e.stopPropagation(); side.setOpen(!side.isOpen()); },
+    });
+
     const filenameEl = h("span", { class: "mdv-filename", text: fileName || "" });
     const toolbar = h("div", { class: "mdv-toolbar" }, [
       h("div", { class: "mdv-toolbar-left" }, [
+        hamburgerBtn,
         h("span", { class: "mdv-badge", text: "Markdown" }),
         filenameEl,
       ]),
@@ -190,6 +249,8 @@
     const overlay = h("div", { id: OVERLAY_ID, "data-mode": "view" }, [
       toolbar,
       h("div", { class: "mdv-body" }, [editorPane, previewPane]),
+      side.backdrop,
+      side.sidebar,
     ]);
 
     // Aplica ajustes ahora y re-aplica ante cualquier cambio.
@@ -218,6 +279,7 @@
         currentFile = fileName;
         filenameEl.textContent = fileName;
       }
+      if (side.isOpen()) side.refresh(); // re-resaltar el archivo actual
     }
 
     return { overlay, update, destroy: unsubscribe };
