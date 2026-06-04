@@ -123,10 +123,18 @@
     render();
     const previewPane = h("div", { class: "mdv-scroll" }, [preview]);
 
+    // Debounce del re-render al teclear: evita re-parsear el documento entero
+    // en cada pulsación (importa en archivos grandes).
+    let renderTimer = 0;
+    const scheduleRender = () => {
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(render, 150);
+    };
+
     /* --- editor (no guarda en Drive; ver nota inline) --- */
     const textarea = h("textarea", {
       class: "mdv-textarea", spellcheck: "false",
-      onInput: (e) => { source = e.target.value; render(); },
+      onInput: (e) => { source = e.target.value; scheduleRender(); },
     });
     textarea.value = source;
 
@@ -199,6 +207,7 @@
     // Refresca el contenido sin recrear el overlay (navegación entre archivos).
     function update({ raw, fileName }) {
       if (typeof raw === "string") {
+        clearTimeout(renderTimer); // cancela un render debounced pendiente
         source = raw;
         textarea.value = raw;
         render();
