@@ -15,13 +15,25 @@
       .replace(/>/g, "&gt;");
   }
 
+  // Sanea una URL antes de meterla en un atributo href/src.
+  // El contenido proviene de archivos .md arbitrarios y se inserta con
+  // innerHTML, así que bloqueamos esquemas peligrosos (javascript:, data:,
+  // vbscript:...) y neutralizamos las comillas para no romper el atributo.
+  const SAFE_SCHEMES = ["http", "https", "mailto", "tel"];
+  function sanitizeUrl(url) {
+    const raw = String(url).trim();
+    const scheme = raw.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (scheme && !SAFE_SCHEMES.includes(scheme[1].toLowerCase())) return "#";
+    return raw.replace(/"/g, "%22");
+  }
+
   // Formato en línea sobre texto YA escapado.
   function inline(text) {
     return text
       .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
-        '<img alt="$1" src="$2">')
+        (_, alt, src) => `<img alt="${alt}" src="${sanitizeUrl(src)}">`)
       .replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        (_, txt, href) => `<a href="${sanitizeUrl(href)}" target="_blank" rel="noopener noreferrer">${txt}</a>`)
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/__([^_]+)__/g, "<strong>$1</strong>")
