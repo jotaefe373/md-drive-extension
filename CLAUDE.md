@@ -74,15 +74,20 @@ Hecho:
   bloqueo de `javascript:`/`data:`, comillas neutralizadas).
 - [x] **Tablas GFM** en el parser, con alineación por columna.
 - [x] **Debounce del editor** (150 ms) al teclear.
-- [x] **Observador desconectado** mientras el overlay está abierto; refresco
-  por sondeo acotado tras navegar (`refreshAfterNav`).
 
 Pendiente, por prioridad:
 
 1. Parser básico: listas anidadas, task lists `- [ ]`, front-matter YAML,
    falso positivo de cursiva en `snake_case`.
 2. Aviso al perder edits locales al navegar con flechas.
-3. Pulido: iconos en el manifest, i18n, gestión de foco/accesibilidad.
+3. **Rendimiento del observador**: el `MutationObserver` vigila todo el
+   `document` de Drive en continuo. Un intento de desconectarlo con el overlay
+   abierto + sondeo (`refreshAfterNav`) **rompió la navegación con flechas**
+   (eliminaba el overlay por timeout) y se revirtió. Si se reintenta, hacerlo
+   con un observador **acotado** al contenedor de la vista previa, nunca con
+   timeout que elimine el overlay. La navegación fiable depende de que el
+   observador esté siempre conectado.
+4. Pulido: iconos en el manifest, i18n, gestión de foco/accesibilidad.
 
 ## Probar
 
