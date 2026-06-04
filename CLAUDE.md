@@ -68,19 +68,21 @@ en `manifest.json`** importa: `parser → settings → ui → main`.
 
 ## Trabajo conocido pendiente (backlog)
 
-Por prioridad (ver discusión previa):
+Hecho:
 
-1. **Seguridad**: sanear esquemas de URL en `parser.js` (bloquear
-   `javascript:`/`data:` en enlaces e imágenes). El render usa `innerHTML`.
-2. **Tablas**: `styles.css` ya las estiliza pero el parser no las genera
-   (incoherencia). Implementar parseo o quitar el CSS.
-3. **Debounce del editor**: re-renderiza en cada tecla; lento en archivos
-   grandes.
-4. Parser básico: listas anidadas, task lists `- [ ]`, front-matter YAML,
+- [x] **Seguridad**: `sanitizeUrl` en `parser.js` (lista blanca de esquemas,
+  bloqueo de `javascript:`/`data:`, comillas neutralizadas).
+- [x] **Tablas GFM** en el parser, con alineación por columna.
+- [x] **Debounce del editor** (150 ms) al teclear.
+- [x] **Observador desconectado** mientras el overlay está abierto; refresco
+  por sondeo acotado tras navegar (`refreshAfterNav`).
+
+Pendiente, por prioridad:
+
+1. Parser básico: listas anidadas, task lists `- [ ]`, front-matter YAML,
    falso positivo de cursiva en `snake_case`.
-5. Aviso al perder edits locales al navegar con flechas.
-6. Acotar el `MutationObserver` (coste de CPU en el SPA de Drive).
-7. Pulido: iconos en el manifest, i18n, gestión de foco/accesibilidad.
+2. Aviso al perder edits locales al navegar con flechas.
+3. Pulido: iconos en el manifest, i18n, gestión de foco/accesibilidad.
 
 ## Probar
 
