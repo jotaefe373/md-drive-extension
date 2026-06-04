@@ -42,8 +42,12 @@
   }
 
   // Nodo donde Drive vuelca el texto plano del archivo.
+  // IMPORTANTE: excluir nuestro propio overlay. Si no, un <pre> de un bloque
+  // de código renderizado por nosotros se confundiría con el texto de Drive,
+  // provocando un bucle de re-render que cuelga la pestaña.
   function findPlainTextNode() {
     for (const pre of document.querySelectorAll("pre")) {
+      if (pre.closest("#" + OVERLAY_ID)) continue;
       const t = (pre.innerText || "").trim();
       if (t.length > 0 && pre.offsetParent !== null) return pre;
     }
@@ -51,6 +55,7 @@
       '[role="document"], .drive-viewer-text, .ndfHFb-c4YZDc'
     );
     for (const el of candidates) {
+      if (el.closest("#" + OVERLAY_ID)) continue;
       const t = (el.innerText || "").trim();
       if (t.length > 20 && el.offsetParent !== null) return el;
     }
@@ -64,7 +69,12 @@
    * overlay en sitio, sin depender de temporizadores frágiles.
    */
   let scanTimer = 0;
-  const observer = new MutationObserver(() => {
+  const observer = new MutationObserver((mutations) => {
+    // Ignorar mutaciones que ocurren SOLO dentro de nuestro overlay: nuestros
+    // propios renders no deben despertar al observador (evita churn y bucles).
+    const overlayEl = document.getElementById(OVERLAY_ID);
+    if (overlayEl && !mutations.some((m) => !overlayEl.contains(m.target))) return;
+
     clearTimeout(scanTimer);
     scanTimer = setTimeout(tryRender, 300); // debounce: esperar a que Drive pinte
   });
