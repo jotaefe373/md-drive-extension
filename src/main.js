@@ -58,11 +58,10 @@
   }
 
   /* ---------------------- observador del DOM de Drive ----------------------
-   * Vigila la aparición de la vista previa. Mientras el overlay está ABIERTO se
-   * DESCONECTA: nuestra superposición tapa las flechas nativas de Drive, así que
-   * la única navegación posible es vía navigate(), y el refresco se hace por
-   * sondeo acotado (refreshAfterNav). Esto elimina el coste continuo del
-   * observador durante la lectura/edición; solo trabaja mientras navegas Drive.
+   * Vigila el DOM de Drive de forma continua (debounce 300 ms). Permanece
+   * conectado también con el overlay abierto: así detecta de forma fiable
+   * cuándo Drive carga otro archivo (navegación con flechas) y refresca el
+   * overlay en sitio, sin depender de temporizadores frágiles.
    */
   let scanTimer = 0;
   const observer = new MutationObserver(() => {
@@ -71,10 +70,6 @@
   });
   function startObserver() {
     observer.observe(document.documentElement, { childList: true, subtree: true });
-  }
-  function stopObserver() {
-    observer.disconnect();
-    clearTimeout(scanTimer);
   }
 
   /* ---------------------- ciclo de vida ---------------------- */
@@ -86,7 +81,6 @@
     const el = document.getElementById(OVERLAY_ID);
     if (el) el.remove();
     document.documentElement.classList.remove("mdv-active");
-    startObserver(); // reanudar la detección de aperturas
   }
 
   // Cierre intencional del usuario (botón ✕ / Escape): no reabrir este doc.
@@ -129,7 +123,6 @@
       viewer = MDV.ui.createViewer({ raw, fileName, onClose: close });
       document.documentElement.classList.add("mdv-active");
       document.body.appendChild(viewer.overlay);
-      stopObserver(); // overlay abierto: ya no hace falta vigilar el DOM
     } catch (err) {
       console.error("[MD Viewer] Error al renderizar:", err);
     } finally {
@@ -174,39 +167,9 @@
     document.dispatchEvent(make());
   }
 
-  // Tras pedir a Drive que cambie de archivo, sondea de forma acotada hasta que
-  // aparezca el nuevo contenido y refresca el overlay en sitio. Sustituye al
-  // observador continuo durante el estado abierto. Un token cancela sondeos
-  // obsoletos si el usuario pulsa varias flechas seguidas.
-  let navToken = 0;
-  function refreshAfterNav(attempt, token) {
-    if (token !== navToken) return;                 // hay una navegación más reciente
-    if (!document.getElementById(OVERLAY_ID) || !viewer) return;
-
-    const md = isMarkdownContext();
-    const node = md ? findPlainTextNode() : null;
-    const raw = node ? (node.innerText || "").trim() : "";
-
-    if (md && raw) {
-      const fileName = currentFileName();
-      const sig = docSignature(fileName, raw);
-      if (sig !== currentSig) {                      // llegó el nuevo archivo
-        currentSig = sig;
-        viewer.update({ raw, fileName });
-        return;
-      }
-    }
-    if (attempt < 12) {                              // esperar a que Drive pinte (~1.4 s)
-      setTimeout(() => refreshAfterNav(attempt + 1, token), 120);
-    } else if (!md || !raw) {
-      removeOverlay();                               // navegó a un no-.md: visor nativo
-    }
-    // md y firma sin cambios al agotar: mismo archivo (sin vecino) -> no-op
-  }
-
   function navigate(dir) {
     if (!clickNativeNav(dir)) dispatchArrow(dir);
-    refreshAfterNav(0, ++navToken);
+    // El cambio de contenido lo recoge el observador -> tryRender -> update.
   }
 
   /* ---------------------- eventos globales ---------------------- */
