@@ -176,6 +176,11 @@
   document.addEventListener("keydown", (e) => {
     if (!document.getElementById(OVERLAY_ID)) return;
 
+    // Ignorar eventos sintéticos: los que dispatchArrow() genera para la
+    // navegación nativa de Drive. Sin esto, nuestro propio listener los
+    // reintercepta y entra en recursión infinita (stack overflow).
+    if (!e.isTrusted) return;
+
     if (e.key === "Escape") { close(); return; }
 
     // No navegar mientras se escribe en el editor.
